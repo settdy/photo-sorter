@@ -1,18 +1,19 @@
 # Photo Sorter for Windows
 
-A simple Windows program that organises photos using their **Date Taken**.
+A simple Windows program that organises photos using their **Creation Time**.
 
 ## What It Does
 
-The program:
-
-- Moves photos by default
-- Sorts them into year and month folders
-- Renames them in date order
-- Preserves embedded photo metadata
-- Preserves the original Windows creation time
+The program will: 
+- Creates year and month folders
+- Moves your images into the respective folders
 - Deletes empty folders left behind after moving photos
-- Does not overwrite existing photos
+- Rename your images in a "YYYYMMDD_XXX" format, where XXX are the numbers
+
+The program won't:
+- Overwrite files when duplicate file occurs
+- Change the metadata of images 
+
 
 Example result:
 
@@ -24,3 +25,5 @@ Selected Folder/
 └── 2026/
     ├── 2026-01/
     └── 2026-02/
+   
+   Example Image Name: 20261225_001
