@@ -21,8 +21,7 @@ function Get-PhotoDate {
         $directoryPath = $File.DirectoryName
 
         if (-not $shellFolderCache.ContainsKey($directoryPath)) {
-            $shellFolderCache[$directoryPath] =
-            $shellApplication.Namespace($directoryPath)
+            $shellFolderCache[$directoryPath] = $shellApplication.Namespace($directoryPath)
         }
 
         $shellFolder = $shellFolderCache[$directoryPath]
@@ -123,7 +122,7 @@ function Show-ErrorMessage {
 # Main window
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "Photo Sorter"
-$form.Size = New-Object System.Drawing.Size(640, 445)
+$form.Size = New-Object System.Drawing.Size(640, 520)
 $form.StartPosition = "CenterScreen"
 $form.FormBorderStyle = "FixedDialog"
 $form.MaximizeBox = $false
@@ -133,9 +132,7 @@ $form.Font = New-Object System.Drawing.Font("Segoe UI", 10)
 $titleLabel = New-Object System.Windows.Forms.Label
 $titleLabel.Text = "Sort photos by the date they were taken"
 $titleLabel.Font = New-Object System.Drawing.Font(
-    "Segoe UI",
-    15,
-    [System.Drawing.FontStyle]::Bold
+    "Segoe UI", 15, [System.Drawing.FontStyle]::Bold
 )
 $titleLabel.Location = New-Object System.Drawing.Point(20, 18)
 $titleLabel.Size = New-Object System.Drawing.Size(590, 35)
@@ -143,8 +140,8 @@ $form.Controls.Add($titleLabel)
 
 $descriptionLabel = New-Object System.Windows.Forms.Label
 $descriptionLabel.Text = @"
-Choose a folder containing your photos. They will be organised into folders
-such as "2026\2026-01" directly inside the selected folder.
+Organize your photos into folders.
+Folders like "2025", "2026", "2025-01", "2026-03" will be created  
 "@
 $descriptionLabel.Location = New-Object System.Drawing.Point(22, 60)
 $descriptionLabel.Size = New-Object System.Drawing.Size(580, 50)
@@ -173,15 +170,21 @@ $recursiveCheckBox.Location = New-Object System.Drawing.Point(22, 195)
 $recursiveCheckBox.Size = New-Object System.Drawing.Size(330, 28)
 $recursiveCheckBox.Checked = $true
 $form.Controls.Add($recursiveCheckBox)
+$deleteEmptyFoldersCheckBox = New-Object System.Windows.Forms.CheckBox
+$deleteEmptyFoldersCheckBox.Text = "Delete empty source folders after moving"
+$deleteEmptyFoldersCheckBox.Location = New-Object System.Drawing.Point(22, 225)
+$deleteEmptyFoldersCheckBox.Size = New-Object System.Drawing.Size(370, 25)
+$deleteEmptyFoldersCheckBox.Checked = $true
+$form.Controls.Add($deleteEmptyFoldersCheckBox)
 
 $modeLabel = New-Object System.Windows.Forms.Label
-$modeLabel.Text = "What should happen to the original photos?"
-$modeLabel.Location = New-Object System.Drawing.Point(22, 235)
-$modeLabel.Size = New-Object System.Drawing.Size(370, 25)
+$modeLabel.Text = "What should happen to the photos?"
+$modeLabel.Location = New-Object System.Drawing.Point(22, 260)
+$modeLabel.Size = New-Object System.Drawing.Size(330, 28)
 $form.Controls.Add($modeLabel)
 
 $modeComboBox = New-Object System.Windows.Forms.ComboBox
-$modeComboBox.Location = New-Object System.Drawing.Point(22, 263)
+$modeComboBox.Location = New-Object System.Drawing.Point(22, 280)
 $modeComboBox.Size = New-Object System.Drawing.Size(330, 30)
 $modeComboBox.DropDownStyle =
 [System.Windows.Forms.ComboBoxStyle]::DropDownList
@@ -191,23 +194,39 @@ $modeComboBox.DropDownStyle =
 $modeComboBox.SelectedIndex = 0
 $form.Controls.Add($modeComboBox)
 
+$namingLabel = New-Object System.Windows.Forms.Label
+$namingLabel.Text = "Naming scheme for sorted files:"
+$namingLabel.Location = New-Object System.Drawing.Point(22, 310)
+$namingLabel.Size = New-Object System.Drawing.Size(330, 25)
+$form.Controls.Add($namingLabel)
+
+$namingComboBox = New-Object System.Windows.Forms.ComboBox
+$namingComboBox.Location = New-Object System.Drawing.Point(22, 338)
+$namingComboBox.Size = New-Object System.Drawing.Size(330, 30)
+$namingComboBox.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+[void]$namingComboBox.Items.Add("Rename to YYYYMMDD_XXX")
+[void]$namingComboBox.Items.Add("Keep original filename (add number if duplicate)")
+[void]$namingComboBox.Items.Add("Rename to YYYYMMDD_OriginalName")
+$namingComboBox.SelectedIndex = 0
+$form.Controls.Add($namingComboBox)
+
 $propertyLabel = New-Object System.Windows.Forms.Label
 $propertyLabel.Text =
-"Photo metadata is not edited. The original Creation time is preserved."
-$propertyLabel.Location = New-Object System.Drawing.Point(22, 305)
+"The original photo metadata will be preserved"
+$propertyLabel.Location = New-Object System.Drawing.Point(22, 375)
 $propertyLabel.Size = New-Object System.Drawing.Size(580, 25)
 $propertyLabel.ForeColor = [System.Drawing.Color]::DimGray
 $form.Controls.Add($propertyLabel)
 
 $statusLabel = New-Object System.Windows.Forms.Label
 $statusLabel.Text = "Ready"
-$statusLabel.Location = New-Object System.Drawing.Point(22, 355)
+$statusLabel.Location = New-Object System.Drawing.Point(22, 425)
 $statusLabel.Size = New-Object System.Drawing.Size(410, 28)
 $form.Controls.Add($statusLabel)
 
 $startButton = New-Object System.Windows.Forms.Button
 $startButton.Text = "Start Sorting"
-$startButton.Location = New-Object System.Drawing.Point(445, 345)
+$startButton.Location = New-Object System.Drawing.Point(445, 415)
 $startButton.Size = New-Object System.Drawing.Size(155, 42)
 $startButton.BackColor = [System.Drawing.Color]::FromArgb(0, 120, 215)
 $startButton.ForeColor = [System.Drawing.Color]::White
@@ -441,49 +460,60 @@ Do you want to continue?
                     $monthFolder = Join-Path $yearFolder $monthFolderName
 
                     $dateKey = $photoDate.ToString("yyyyMMdd")
+                    $baseNameWithoutExt = $file.BaseName
 
-                    [System.IO.Directory]::CreateDirectory($monthFolder) |
-                    Out-Null
+                    # Ensure the month folder exists
+                    [System.IO.Directory]::CreateDirectory($monthFolder) | Out-Null
 
-                    if (-not $dailyCounters.ContainsKey($dateKey)) {
-                        $largestExistingNumber = 0
-
-                        $existingFiles = Get-ChildItem `
-                            -LiteralPath $monthFolder `
-                            -File `
-                            -ErrorAction SilentlyContinue
-
-                        $namePattern =
-                        "^" + [Regex]::Escape($dateKey) + "_(\d{3,})\."
-
-                        foreach ($existingFile in $existingFiles) {
-                            if ($existingFile.Name -match $namePattern) {
-                                $existingNumber = [int]$Matches[1]
-
-                                if (
-                                    $existingNumber -gt
-                                    $largestExistingNumber
-                                ) {
-                                    $largestExistingNumber = $existingNumber
+                    # Choose base name according to the selected option
+                    $namingOption = $namingComboBox.SelectedIndex
+                    if ($namingOption -eq 0) {
+                        #Option 1: Rename to YYYYMMDD_XXX
+                        if (-not $dailyCounters.ContainsKey($dateKey)) {
+                            $largestExistingNumber = 0
+                            $existingFiles = Get-ChildItem -LiteralPath $monthFolder -File -ErrorAction SilentlyContinue
+                            $namePattern = "^" + [Regex]::Escape($dateKey) + "_(\d{3,})\."
+                            foreach ($existingFile in $existingFiles) {
+                                if ($existingFile.Name -match $namePattern) {
+                                    $existingNumber = [int]$Matches[1]
+                                    if ($existingNumber -gt $largestExistingNumber) {
+                                        $largestExistingNumber = $existingNumber
+                                    }
                                 }
                             }
+                            $dailyCounters[$dateKey] = $largestExistingNumber
                         }
 
-                        $dailyCounters[$dateKey] =
-                        $largestExistingNumber
+                        do {
+                            $dailyCounters[$dateKey]++
+                            $sequenceNumber = $dailyCounters[$dateKey]
+                            $numberText = $sequenceNumber.ToString("D3")
+                            $candidateBase = "${dateKey}_${numberText}"
+                        } while (Test-Path (Join-Path $monthFolder "$candidateBase$($file.Extension)"))
+                    }
+                    elseif ($namingOption -eq 1) {
+                        # Option 2: Keep original filename (add number if duplicate)
+                        $candidateBase = $baseNameWithoutExt
+                        $suffix = ""
+                        $counter = 1
+                        while (Test-Path (Join-Path $monthFolder "$candidateBase$suffix$($file.Extension)")) {
+                            $suffix = " ($counter)"
+                            $counter++
+                        }
+                    }
+                    else {
+                        # Option 3: YYYYMMDD_OriginalName
+                        $candidateBase = "${dateKey}_$baseNameWithoutExt"
+                        $suffix = ""
+                        $counter = 1
+                        while (Test-Path (Join-Path $monthFolder "$candidateBase$suffix$($file.Extension)")) {
+                            $suffix = " ($counter)"
+                            $counter++
+                        }
                     }
 
-                    do {
-                        $dailyCounters[$dateKey]++
-                        $sequenceNumber = $dailyCounters[$dateKey]
-                        $numberText = $sequenceNumber.ToString("D3")
-
-                        $newFileName =
-                        "${dateKey}_${numberText}$($file.Extension.ToLowerInvariant())"
-
-                        $targetPath = Join-Path $monthFolder $newFileName
-                    }
-                    while (Test-Path -LiteralPath $targetPath)
+                    $newFileName = "$candidateBase$suffix$($file.Extension.ToLowerInvariant())"
+                    $targetPath = Join-Path $monthFolder $newFileName
 
                     if ($isCopyMode) {
                         Copy-Item `
@@ -537,7 +567,7 @@ Do you want to continue?
             # Delete empty folders after moving.
             $deletedFolderCount = 0
 
-            if (-not $isCopyMode) {
+            if (-not $isCopyMode -and $deleteEmptyFoldersCheckBox.Checked) {
                 $statusLabel.Text = "Removing empty folders..."
                 [System.Windows.Forms.Application]::DoEvents()
 
@@ -550,23 +580,20 @@ Do you want to continue?
                         -ErrorAction SilentlyContinue |
                     Sort-Object { $_.FullName.Length } -Descending
                 )
-
                 foreach ($folder in $folders) {
                     try {
-                        # Never follow or delete junctions/symbolic links.
+                        # Never follow or delete junctions/symbolic links
                         if (
                             ($folder.Attributes -band
                             [System.IO.FileAttributes]::ReparsePoint) -ne 0
                         ) {
                             continue
                         }
-
                         $contents = @(
                             [System.IO.Directory]::EnumerateFileSystemEntries(
                                 $folder.FullName
                             )
                         )
-
                         if ($contents.Count -eq 0) {
                             Remove-Item `
                                 -LiteralPath $folder.FullName `
@@ -586,7 +613,6 @@ Do you want to continue?
                     }
                 }
             }
-
             $logTimestamp = Get-Date -Format "yyyyMMdd_HHmmss"
             $logPath = Join-Path `
                 $sourceFolder `

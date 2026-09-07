@@ -8,11 +8,16 @@ The program will:
 - Creates year and month folders
 - Moves your images into the respective folders
 - Deletes empty folders left behind after moving photos
-- Rename your images in a "YYYYMMDD_XXX" format, where XXX are the numbers
 
 The program won't:
 - Overwrite files when duplicate file occurs
 - Change the metadata of images 
+
+##Options:
+Rename / Keep original 
+- Rename your images in a "YYYYMMDD_XXX" format, where XXX are the numbers
+- Keep original image name (In cases of duplicate file names, a number will be added after the name)
+- Rename your images in "YYYYMMDD_NAME" format
 
 
 Example result:
