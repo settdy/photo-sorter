@@ -19,6 +19,9 @@ Rename / Keep original
 - Keep original image name (In cases of duplicate file names, a number will be added after the name)
 - Rename your images in "YYYYMMDD_NAME" format
 
+Move or Copy
+- Move your original images
+- Copy your images and move them
 
 Example result:
 
